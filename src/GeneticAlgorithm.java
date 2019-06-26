@@ -9,6 +9,7 @@ public class GeneticAlgorithm
 	private double mutationRate;
 	private int generation;
 	private int[][] Noise;
+	int trauncatedMovesetIndex;
 	Maze myMaze;
 	Random rand;
 	
@@ -20,27 +21,102 @@ public class GeneticAlgorithm
 		populationSize = popuSize;
 		
 		sizeOfString = sizeOString;
-		
+		trauncatedMovesetIndex = sizeOfString-1;
 		myMoveSet = generateRandomMoveSet();
 		mutationRate = mutationR;
 		generation = 0;
 		rand = new Random();
 	}
 	
+	
+	public GeneticAlgorithm(int popuSize, double mutationR, int sizeOString, Maze maze)
+	{
+		myMaze = maze;
+		populationSize = popuSize;
+		
+		sizeOfString = sizeOString;
+		
+		myMoveSet = generateRandomMoveSet();
+		mutationRate = mutationR;
+		generation = 0;
+		rand = new Random();
+		
+	}
+	
 	public double getFitness(String chromosome)
 	{
 		//TODO: do a fitness function for the maze
+		String c = chromosome;
 		
-		int x = getPosition(chromosome)[0],y = getPosition(chromosome)[1];
-		double distance = Math.sqrt( (double)Math.pow((x - myMaze.getGoal()[0]), 2) + (double)Math.pow(( y - myMaze.getGoal()[1]), 2 ));
-		int dontTouchBoi = addifTouchesHash(chromosome);
+		//int dontTouchBoi = addifTouchesHash(c);
 		
-		int earlyBoi = gotThereBeforeIntended(chromosome);
+		//double distance = findDistance(getPosition(c)[0], getPosition(c)[1]);
+		//int earlyBoi = gotThereBeforeIntended(chromosome);
 						
-		return distance + dontTouchBoi;
+		//return distance + dontTouchBoi;
+		
+		
 		//return distance;
 		//return dontTouchBoi;
+		//return distance + dontTouchBoi;
 		
+		double distToStart = findDistance(getPosition(c), myMaze.getStartingPosition());
+		double distToEnd = findDistance(getPosition(c), myMaze.getGoal());
+		
+		
+		
+		double fitness = (distToStart - distToEnd)-addifTouchesHash(c)/(distToStart + distToEnd);
+		
+		
+		if(isSolved(c))
+		{
+			fitness += 20;
+			fitness += 1.0 - (double)effectiveGenome(c)/myMaze.getMazeMatrix().length * myMaze.getMazeMatrix().length;
+			
+			
+		}
+		
+		return fitness;
+		
+	}
+	
+	public boolean isSolved(String chromosome)
+	{
+		return getPosition(chromosome)[0] == myMaze.getGoal()[0] && getPosition(chromosome)[1] == myMaze.getGoal()[1];
+	}
+	
+	public int effectiveGenome(String chromosome)
+	{
+		return chromosome.length() - addifTouchesHash(chromosome);
+	}
+	
+	public boolean percentOfPopAtZero(double percentage)
+	{
+		boolean[] x = new boolean[myMoveSet.length];
+		
+		for(int i = 0; i < myMoveSet.length; i++)
+		{
+			if(getFitness(myMoveSet[i]) == 0)
+				x[i] = true;
+			else
+				x[i] = false;
+		}
+		
+		double sum = 0;
+		
+		for(int i = 0; i < x.length; i++)
+		{
+			if(x[i])
+				sum++;
+		}
+		
+		return sum/x.length > percentage;
+	}
+	
+	
+	public double findDistance(int[] x, int[] z)
+	{
+		return Math.sqrt( (double)Math.pow((x[0] - z[0]), 2) + (double)Math.pow(( x[1] - z[1]), 2 ));
 	}
 	
 	public String selectParent() //Using tournament
@@ -48,7 +124,7 @@ public class GeneticAlgorithm
 		String individual1 = myMoveSet[rand.nextInt(myMoveSet.length)];
 		String individual2 = myMoveSet[rand.nextInt(myMoveSet.length)];
 				
-		return (getFitness(individual1) < getFitness(individual2))? individual1 : individual2;
+		return (getFitness(individual1) > getFitness(individual2))? individual1 : individual2;
 	}
 	
 	public String CrossOver(String chromosome1, String chromosome2)
@@ -90,6 +166,7 @@ public class GeneticAlgorithm
 	public void evolve()
 	{
 		String[] nextPopulation = new String[myMoveSet.length];
+				
 		
 		for(int i = 0; i < nextPopulation.length; i++)
 		{
@@ -104,12 +181,59 @@ public class GeneticAlgorithm
 			String mutatedOffspring = Mutate(offSpring, mutationRate);
 			
 			//add offspring to next population
+			
 			nextPopulation[i] = mutatedOffspring;
+			
+			if(isSolved(nextPopulation[i]))
+			{
+				nextPopulation[i] = removeRedundantMoves(nextPopulation[i]);
+			}
 		}
+
+		
+		int shortestChromosome = findShortestString(nextPopulation);
+		sizeOfString = shortestChromosome;
+		
+		
+		nextPopulation[0] = getBestIndividual();
+
+		for(int i = 0; i < nextPopulation.length; i++)
+		{
+			nextPopulation[i] = nextPopulation[i].substring(0, shortestChromosome);
+		}
+		
 		myMoveSet = nextPopulation;
 		generation++;
 	}
 	
+	public int findShortestString(String[] arr)
+	{
+		int shortest = Integer.MAX_VALUE;
+		for(int i = 0; i < arr.length; i++)
+		{
+			if(arr[i].length() < shortest)
+			{
+				shortest = arr[i].length();
+			}
+		}
+		return shortest;
+	}
+	
+    public String removeRedundantMoves(String chromosome)
+	{
+		String c = chromosome;
+		
+		for(int i = 0; i < c.length()-1; i++)
+		{
+			if(c.substring(i, i+2).equals("ud") || c.substring(i, i+2).equals("du") || c.substring(i, i+2).equals("rl") || c.substring(i,i+2).equals("lr"))
+			{
+				c = c.substring(0,i) + c.substring(i+2);
+				i-=1;
+			}
+		}
+		
+		return c;
+	}
 	//utility
 	
 	private String[] generateRandomMoveSet()
@@ -222,11 +346,43 @@ public class GeneticAlgorithm
 		
 		return outputIntArray;
 	}
+
+	
+	public char[][] individualMovedLikeThis(String chromosome)
+	{		
+		int x = 0, y = 0;
+		
+		x = myMaze.getStartingPosition()[0];
+		y = myMaze.getStartingPosition()[1];
+		
+		Maze temp = new Maze(myMaze.getMazeMatrix().length, myMaze.getMazeMatrix()[0].length, myMaze.getGoal()[0], myMaze.getGoal()[1], myMaze.getStartingPosition()[0], myMaze.getStartingPosition()[1] );
+		temp.addNoise(Noise);
+		char[][] maze = temp.getMazeMatrix();
+		
+		
+		
+		for(int i = 0; i < myMoveSet[0].length(); i++)
+		{			
+			if(chromosome.charAt(i) == 'd' && x + 1 <= myMaze.getMazeMatrix()[0].length-1 && maze[x+1][y] != '#')
+				x += 1;
+			else if(chromosome.charAt(i) == 'u' && x - 1 >= 0 && maze[x-1][y] != '#')
+				x -= 1;
+			else if(chromosome.charAt(i) == 'r' && y + 1 <= myMaze.getMazeMatrix()[0].length-1 && maze[x][y+1] != '#')
+				y += 1;
+			else if(chromosome.charAt(i) == 'l' && y - 1 >= 0 && maze[x][y-1] != '#')
+				y -= 1;
+			
+			maze[x][y] = 'o';
+		}
+		
+		maze[x][y] = 'o';
+		
+		return maze;
+	}
+	
 	
 	public int addifTouchesHash(String chromosome)
 	{
-		int[] outputIntArray = {myMaze.getStartingPosition()[0], myMaze.getStartingPosition()[1]};
-
 		int sum = 0;
 		
 		int x = 0, y = 0;
@@ -246,29 +402,37 @@ public class GeneticAlgorithm
 			{
 				if(x + 1 <= myMaze.getMazeMatrix()[0].length-1 && maze[x+1][y] != '#' && maze[x+1][y] != 'o')
 					x += 1;
+				else if(x + 1 <= myMaze.getMazeMatrix()[0].length-1 && (maze[x+1][y] == 'o' || maze[x+1][y] == 'O'))
+					sum+=1;
 				else
-					sum+=20;
+					sum+=1;
 			}
 			else if(chromosome.charAt(i) == 'u')
 			{
 				if(x - 1 >= 0 && maze[x-1][y] != '#' && maze[x-1][y] != 'o')
 					x -= 1;
+				else if(x - 1 >= 0 && (maze[x-1][y] == 'o' || maze[x-1][y] == 'o'))
+					sum+= 1;
 				else
-					sum+=20;
+					sum+=1;
 			}
 			else if(chromosome.charAt(i) == 'r')
 			{
 				if(y + 1 <= myMaze.getMazeMatrix()[0].length-1 && maze[x][y+1] != '#' && maze[x][y+1] != 'o')
 					y += 1;
+				else if(y + 1 <= myMaze.getMazeMatrix()[0].length-1 && (maze[x][y+1] == 'o' || maze[x][y+1] == 'O'))
+					sum+= 1;
 				else
-					sum+=20;
+					sum+=1;
 			}
 			else if(chromosome.charAt(i) == 'l')
 			{
 				if(y - 1 >= 0 && maze[x][y-1] != '#' && maze[x][y-1] != 'o')
 					y -= 1;
+				else if(y - 1 >= 0 && (maze[x][y-1] == 'o' || maze[x][y-1] == 'O'))
+					sum+= 1;
 				else
-					sum+=20;
+					sum+=1;
 			}
 			
 			maze[x][y] = 'o';
@@ -290,5 +454,17 @@ public class GeneticAlgorithm
 		return myMoveSet[BestIndividual()];
 	}
 	
+	public int getTrauncatedMovestIndex()
+	{
+		return trauncatedMovesetIndex;
+	}
+	
+	public int getSizeOfString()
+	{
+		return sizeOfString;
+	}
+	
 	public String[] getMoveSet() { return myMoveSet;}
+	public int getGeneration() {return generation;}
+	public void setMutationRate(double x) {mutationRate = x;}
 }

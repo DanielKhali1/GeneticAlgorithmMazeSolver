@@ -20,8 +20,8 @@ public class Maze
 			for(int j = 0; j < myMazeMatrix[0].length; j++)
 				myMazeMatrix[i][j] = '_';
 		
-		myMazeMatrix[myStartingPosition[0]][myStartingPosition[1]] = 'O';
-		myMazeMatrix[myGoal[0]][myGoal[1]] = 'X';
+		//myMazeMatrix[myStartingPosition[0]][myStartingPosition[1]] = 'O';
+		//myMazeMatrix[myGoal[0]][myGoal[1]] = 'X';
 	}
 	
 	//Creates a default Matrix	
@@ -72,6 +72,19 @@ public class Maze
 		}
 	}
 	
+	public void removeNoise(int[][] Noise)
+	{
+		for(int i = 0; i < Noise.length; i++)
+		{
+			if(Noise[i][0] > myMazeMatrix.length || Noise[i][0] < 0)
+				continue;
+			if(Noise[i][1] > myMazeMatrix[0].length || Noise[i][1] < 0)
+				continue;
+			
+			myMazeMatrix[Noise[i][0]][Noise[i][1]] = '_';
+		}
+	}
+	
 	
 	public String toString()
 	{
@@ -85,9 +98,45 @@ public class Maze
 	
 	//Setters (modifiers)
 	public void setMazeMatrix(char[][] x){myMazeMatrix = x;}
-	public void setStartingPoint(int[] x) {myStartingPosition = x;}
-	public void setGoal(int[]x) {myGoal = x;}
+	public void setStartingPoint(int[] x) 
+	{
+		myStartingPosition = x;
+		
+		for(int i =0; i < myMazeMatrix.length; i++)
+			for(int j = 0; j < myMazeMatrix[i].length; j++)
+				if(myMazeMatrix[i][j] == 'O')
+					myMazeMatrix[i][j] = '_';
+		
+		myMazeMatrix[x[0]][x[1]] = 'O';
+		
+	}
+	public void setGoal(int[]x) 
+	{
+		myGoal = x;
+		
+		for(int i =0; i < myMazeMatrix.length; i++)
+			for(int j = 0; j < myMazeMatrix[i].length; j++)
+				if(myMazeMatrix[i][j] == 'X')
+					myMazeMatrix[i][j] = '_';
+		
+		myMazeMatrix[x[0]][x[1]] = 'X';
+	}
 	
+	public int whiteSpace()
+	{
+		int sum = 0;
+		for(int i = 0; i < myMazeMatrix.length; i++)
+		{
+			for(int j = 0; j< myMazeMatrix[i].length; j++)
+			{
+				if(myMazeMatrix[i][j] == '_')
+				{
+					sum++;
+				}
+			}
+		}
+		return sum;
+	}
 	//Getters (Accessors)
 	public char[][] getMazeMatrix(){return myMazeMatrix;}
 	public int[] getStartingPosition() {return myStartingPosition;}
